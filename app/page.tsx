@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Login } from '@/components/Login';
 import { Dashboard } from '@/components/Dashboard';
 import { DealHub } from '@/components/DealHub';
 import { OriginationModule } from '@/components/OriginationModule';
@@ -9,41 +8,24 @@ import { UnderwritingModule } from '@/components/UnderwritingModule';
 import { PortfolioModule } from '@/components/PortfolioModule';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
-
-type User = {
-	id: string;
-	name: string;
-	role: string;
-	email: string;
-};
+import { AuthWrapper } from '@/components/AuthWrapper';
+import { useAuthStore } from '@/stores/authStore';
 
 type NavigationItem = 'dashboard' | 'deals' | 'origination' | 'underwriting' | 'portfolio';
 
-export default function HomePage() {
-	const [user, setUser] = useState<User | null>(null);
+function AppContent() {
+	const { user } = useAuthStore();
 	const [activeView, setActiveView] = useState<NavigationItem>('dashboard');
 	const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
-
-	const handleLogin = (userData: User) => {
-		setUser(userData);
-	};
-
-	const handleLogout = () => {
-		setUser(null);
-		setActiveView('dashboard');
-		setSelectedDealId(null);
-	};
 
 	const handleViewDeal = (dealId: string) => {
 		setSelectedDealId(dealId);
 		setActiveView('deals');
 	};
 
-	if (!user) {
-		return <Login onLogin={handleLogin} />;
-	}
-
 	const renderContent = () => {
+		if (!user) return null;
+
 		switch (activeView) {
 			case 'dashboard':
 				return <Dashboard user={user} onViewDeal={handleViewDeal} />;
@@ -60,15 +42,25 @@ export default function HomePage() {
 		}
 	};
 
+	if (!user) return null;
+
 	return (
 		<div className="h-screen flex bg-background">
 			<Sidebar activeView={activeView} onNavigate={setActiveView} />
 			<div className="flex-1 flex flex-col">
-				<Header user={user} onLogout={handleLogout} />
+				<Header user={user} />
 				<main className="flex-1 overflow-auto">
 					{renderContent()}
 				</main>
 			</div>
 		</div>
+	);
+}
+
+export default function HomePage() {
+	return (
+		<AuthWrapper>
+			<AppContent />
+		</AuthWrapper>
 	);
 }

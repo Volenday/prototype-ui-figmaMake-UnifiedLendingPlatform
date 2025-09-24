@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import { useAuthStore } from '@/stores/authStore';
 
 interface HeaderProps {
   user: {
@@ -17,10 +18,14 @@ interface HeaderProps {
     role: string;
     email: string;
   };
-  onLogout: () => void;
 }
 
-export function Header({ user, onLogout }: HeaderProps) {
+export function Header({ user }: HeaderProps) {
+  const logout = useAuthStore((state) => state.logout);
+
+  const handleLogout = () => {
+    logout();
+  };
   return (
     <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between">
       <div className="flex items-center space-x-4">
@@ -60,7 +65,7 @@ export function Header({ user, onLogout }: HeaderProps) {
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onLogout}>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               Log out
             </DropdownMenuItem>

@@ -5,38 +5,68 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-
-type User = {
-  id: string;
-  name: string;
-  role: string;
-  email: string;
-};
+import { Alert, AlertDescription } from './ui/alert';
+import { AlertTriangle } from 'lucide-react';
+import axios from 'axios';
+import { useAuthStore, User } from '@/stores/authStore';
 
 interface LoginProps {
-  onLogin: (user: User) => void;
+  onLogin?: (user: User) => void;
 }
 
 export function Login({ onLogin }: LoginProps) {
+  const login = useAuthStore((state) => state.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
     
-    // Simulate authentication
-    setTimeout(() => {
-      const mockUser: User = {
-        id: '1',
-        name: 'Sarah Johnson',
-        role: 'Senior Credit Analyst',
-        email: email || 'sarah.johnson@lendingco.com'
-      };
-      onLogin(mockUser);
+    try {
+      // Call the Next.js API route
+      const response = await axios.post('/api/auth/login', {
+        email,
+        password
+      });
+
+      // Handle successful login
+      const { user, token, refreshToken } = response.data;
+      
+      // Store in Zustand store (which persists to localStorage)
+      login(user, token, refreshToken);
+
+      // Call the optional onLogin callback if provided
+      if (onLogin) {
+        onLogin(user);
+      }
+
+    } catch (error: any) {
+      console.error('Login error:', error);
+      
+      // Handle different types of errors
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          // Server responded with error status
+          const errorMessage = error.response.data?.error || 'Login failed';
+          setError(errorMessage);
+        } else if (error.request) {
+          // Network error
+          setError('Unable to connect to server. Please check your connection.');
+        } else {
+          // Request setup error
+          setError('An error occurred while processing your request.');
+        }
+      } else {
+        // Generic error
+        setError('An unexpected error occurred. Please try again.');
+      }
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -49,6 +79,12 @@ export function Login({ onLogin }: LoginProps) {
           </p>
         </CardHeader>
         <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -59,6 +95,7 @@ export function Login({ onLogin }: LoginProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -70,6 +107,7 @@ export function Login({ onLogin }: LoginProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
@@ -77,7 +115,7 @@ export function Login({ onLogin }: LoginProps) {
             </Button>
           </form>
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            Demo credentials: Any email and password
+            Use your Ahamatic credentials to sign in
           </div>
         </CardContent>
       </Card>
