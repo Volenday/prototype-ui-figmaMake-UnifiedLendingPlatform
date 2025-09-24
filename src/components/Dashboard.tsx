@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from './ui/alert';
 import { useDeals } from '@/hooks/useDeals';
 import { useDealsStore } from '@/stores/dealsStore';
 import { NoSSR } from './NoSSR';
+import { NewDealDialog } from './NewDealDialog';
 import { useEffect } from 'react';
 
 interface DashboardProps {
@@ -21,11 +22,22 @@ interface DashboardProps {
 
 export function Dashboard({ user, onViewDeal }: DashboardProps) {
   const { deals, totalDeals, isLoading, error, refetch } = useDeals({ limit: 10 });
-  const { setSelectedDeal, selectDealById } = useDealsStore();
 
   const handleDealClick = (dealId: string) => {
-    // Select the deal in the store
-    selectDealById(dealId);
+    console.log('Selecting deal with ID:', dealId);
+    
+    // Find the deal in the current deals list
+    const deal = deals.find(d => d.id === dealId);
+    
+    if (deal) {
+      console.log('Found deal:', deal.name);
+      // Use Zustand's direct state update
+      useDealsStore.setState({ selectedDeal: deal });
+      console.log('Deal selected successfully');
+    } else {
+      console.error('Deal not found with ID:', dealId);
+    }
+    
     // Navigate to deal view
     onViewDeal(dealId);
   };
@@ -62,10 +74,10 @@ export function Dashboard({ user, onViewDeal }: DashboardProps) {
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            New Deal
-          </Button>
+          <NewDealDialog onDealCreated={(deal) => {
+            // Optionally handle the created deal, e.g., select it
+            console.log('New deal created:', deal);
+          }} />
         </div>
       </div>
 

@@ -29,15 +29,15 @@ const fetchDeals = async (params: FetchDealsParams = {}): Promise<DealsResponse>
 	return response.data;
 };
 
-// Create a new deal
-const createDeal = async (dealData: Partial<Deal>): Promise<Deal> => {
+// Create a new deal using AI generation
+const createDeal = async (content: string): Promise<any> => {
 	const token = useAuthStore.getState().token;
 	
 	if (!token) {
 		throw new Error('No authentication token available');
 	}
 
-	const response = await axios.post('/api/deals', dealData, {
+	const response = await axios.post('/api/deals', { content }, {
 		headers: {
 			'Authorization': `Bearer ${token}`,
 		},
@@ -85,10 +85,12 @@ export const useDeals = (params: FetchDealsParams = {}) => {
 
 	const createDealMutation = useMutation({
 		mutationFn: createDeal,
-		onSuccess: (newDeal: Deal) => {
-			// Add to store
-			useDealsStore.getState().addDeal(newDeal);
-			// Invalidate and refetch deals
+		onSuccess: (response: any) => {
+			// Add the new deal to store
+			if (response.deal) {
+				useDealsStore.getState().addDeal(response.deal);
+			}
+			// Invalidate and refetch deals to get updated list
 			queryClient.invalidateQueries({ queryKey: ['deals'] });
 		},
 		onError: (error: any) => {
@@ -114,8 +116,10 @@ export const useDeals = (params: FetchDealsParams = {}) => {
 		// Actions
 		refetch,
 		createDeal: createDealMutation.mutate,
-		isCreating: createDealMutation.isLoading,
+		isCreating: createDealMutation.isPending,
 		createError: createDealMutation.error?.message || null,
+		createSuccess: createDealMutation.isSuccess,
+		resetCreateMutation: () => createDealMutation.reset(),
 	};
 };
 

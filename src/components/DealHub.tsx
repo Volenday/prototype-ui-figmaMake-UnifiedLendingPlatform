@@ -18,17 +18,25 @@ interface DealHubProps {
 
 export function DealHub({ dealId, onBack }: DealHubProps) {
   const [activeTab, setActiveTab] = useState('summary');
-  const { selectedDeal, getDealById, selectDealById } = useDealsStore();
+  const selectedDeal = useDealsStore((state) => state.selectedDeal);
+  const getDealById = useDealsStore((state) => state.getDealById);
 
   // If we have a dealId but no selected deal, try to select it
   useEffect(() => {
     if (dealId && !selectedDeal) {
-      selectDealById(dealId);
+      console.log('DealHub: Attempting to select deal with ID:', dealId);
+      const deal = getDealById ? getDealById(dealId) : null;
+      if (deal) {
+        console.log('DealHub: Found and selecting deal:', deal.name);
+        useDealsStore.setState({ selectedDeal: deal });
+      } else {
+        console.log('DealHub: Deal not found in store with ID:', dealId);
+      }
     }
-  }, [dealId, selectedDeal, selectDealById]);
+  }, [dealId, selectedDeal, getDealById]);
 
   // Get the deal to display (prioritize selectedDeal, fallback to getDealById)
-  const dealToDisplay = selectedDeal || (dealId ? getDealById(dealId) : null);
+  const dealToDisplay = selectedDeal || (dealId && getDealById ? getDealById(dealId) : null);
 
   if (!dealToDisplay) {
     return (
