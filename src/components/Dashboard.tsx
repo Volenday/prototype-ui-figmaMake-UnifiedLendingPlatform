@@ -1,10 +1,14 @@
 'use client';
 
-import { Plus, TrendingUp, Users, DollarSign, AlertTriangle, Clock } from 'lucide-react';
+import { Plus, TrendingUp, Users, DollarSign, AlertTriangle, Clock, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
+import { Alert, AlertDescription } from './ui/alert';
+import { useDeals } from '@/hooks/useDeals';
+import { NoSSR } from './NoSSR';
+import { useEffect } from 'react';
 
 interface DashboardProps {
   user: {
@@ -15,22 +19,27 @@ interface DashboardProps {
 }
 
 export function Dashboard({ user, onViewDeal }: DashboardProps) {
-  const pipelineDeals = [
-    { id: '1', name: 'Oakwood Commercial Center', amount: '£2.5M', stage: 'Underwriting', progress: 65 },
-    { id: '2', name: 'City Heights Residential', amount: '£1.8M', stage: 'Committee Review', progress: 85 },
-    { id: '3', name: 'Riverside Warehouse', amount: '£3.2M', stage: 'Due Diligence', progress: 40 },
-  ];
+  const { deals, totalDeals, isLoading, error, refetch } = useDeals({ limit: 10 });
 
-  const reviewQueue = [
-    { id: '4', name: 'Metro Plaza Development', type: 'Credit Review', priority: 'High', daysOpen: 2 },
-    { id: '5', name: 'Harbor Point Retail', type: 'Documentation', priority: 'Medium', daysOpen: 1 },
-    { id: '6', name: 'Gateway Business Park', type: 'Valuation Review', priority: 'Low', daysOpen: 5 },
-  ];
+  // Get pipeline deals (active deals)
+  const pipelineDeals = deals.filter(deal => 
+    deal.status === 'Pending' || deal.status === 'Amendments Required'
+  ).slice(0, 3);
 
-  const newLeads = [
-    { id: '7', name: 'Crossroads Shopping Center', amount: '£4.1M', source: 'Referral', date: '2 hours ago' },
-    { id: '8', name: 'Northgate Office Complex', amount: '£2.9M', source: 'Direct', date: '5 hours ago' },
-  ];
+  // Get deals for review (deals needing action)
+  const reviewQueue = deals.filter(deal => 
+    deal.status === 'Amendments Required' || deal.stage.toLowerCase().includes('review')
+  ).slice(0, 3);
+
+  // Get new leads (recently created deals)
+  const newLeads = deals
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 2);
+
+  // Calculate metrics from real data
+  const totalPipelineValue = deals.reduce((sum, deal) => sum + deal.rawAmount, 0);
+  const approvedDeals = deals.filter(deal => deal.status === 'Approved').length;
+  const pendingDeals = deals.filter(deal => deal.status === 'Pending').length;
 
   return (
     <div className="p-6 space-y-6">
@@ -39,11 +48,27 @@ export function Dashboard({ user, onViewDeal }: DashboardProps) {
           <h1 className="text-2xl font-semibold">Welcome back, {user.name.split(' ')[0]}</h1>
           <p className="text-muted-foreground">Here's what's happening with your deals today</p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          New Deal
-        </Button>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            New Deal
+          </Button>
+        </div>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {error}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -53,9 +78,11 @@ export function Dashboard({ user, onViewDeal }: DashboardProps) {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">£24.7M</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? '...' : `£${(totalPipelineValue / 1000000).toFixed(1)}M`}
+            </div>
             <p className="text-xs text-muted-foreground">
-              +12% from last month
+              {totalDeals} total deals
             </p>
           </CardContent>
         </Card>
@@ -66,35 +93,41 @@ export function Dashboard({ user, onViewDeal }: DashboardProps) {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">23</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? '...' : totalDeals}
+            </div>
             <p className="text-xs text-muted-foreground">
-              7 awaiting review
+              {pendingDeals} awaiting review
             </p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Origination</CardTitle>
+            <CardTitle className="text-sm font-medium">Approved Deals</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">£8.2M</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? '...' : approvedDeals}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Target: £10M
+              This month
             </p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Portfolio Health</CardTitle>
+            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">98.2%</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? '...' : totalDeals > 0 ? `${Math.round((approvedDeals / totalDeals) * 100)}%` : '0%'}
+            </div>
             <p className="text-xs text-muted-foreground">
-              2 covenant breaches
+              Approval rate
             </p>
           </CardContent>
         </Card>
@@ -107,21 +140,42 @@ export function Dashboard({ user, onViewDeal }: DashboardProps) {
             <CardTitle>My Pipeline</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {pipelineDeals.map((deal) => (
-              <div key={deal.id} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium cursor-pointer hover:text-primary" 
-                       onClick={() => onViewDeal(deal.id)}>
-                      {deal.name}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{deal.amount} • {deal.stage}</p>
+            {isLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="h-4 bg-muted rounded w-40"></div>
+                        <div className="h-3 bg-muted rounded w-32"></div>
+                      </div>
+                      <div className="h-6 bg-muted rounded w-12"></div>
+                    </div>
+                    <div className="h-2 bg-muted rounded"></div>
                   </div>
-                  <Badge variant="outline">{deal.progress}%</Badge>
-                </div>
-                <Progress value={deal.progress} className="h-2" />
+                ))}
               </div>
-            ))}
+            ) : pipelineDeals.length > 0 ? (
+              pipelineDeals.map((deal) => (
+                <div key={deal.id} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium cursor-pointer hover:text-primary" 
+                         onClick={() => onViewDeal(deal.id)}>
+                        {deal.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{deal.amount} • {deal.stage}</p>
+                    </div>
+                    <Badge variant="outline">{deal.progress}%</Badge>
+                  </div>
+                  <Progress value={deal.progress} className="h-2" />
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No active pipeline deals
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -131,27 +185,49 @@ export function Dashboard({ user, onViewDeal }: DashboardProps) {
             <CardTitle>Deals for Review</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {reviewQueue.map((item) => (
-              <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex-1">
-                  <p className="font-medium cursor-pointer hover:text-primary"
-                     onClick={() => onViewDeal(item.id)}>
-                    {item.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{item.type}</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Badge variant={item.priority === 'High' ? 'destructive' : 
-                                 item.priority === 'Medium' ? 'default' : 'secondary'}>
-                    {item.priority}
-                  </Badge>
-                  <div className="text-xs text-muted-foreground flex items-center">
-                    <Clock className="h-3 w-3 mr-1" />
-                    {item.daysOpen}d
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex-1 space-y-1">
+                      <div className="h-4 bg-muted rounded w-36"></div>
+                      <div className="h-3 bg-muted rounded w-24"></div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="h-6 bg-muted rounded w-16"></div>
+                      <div className="h-4 bg-muted rounded w-8"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : reviewQueue.length > 0 ? (
+              reviewQueue.map((deal) => (
+                <div key={deal.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex-1">
+                    <p className="font-medium cursor-pointer hover:text-primary"
+                       onClick={() => onViewDeal(deal.id)}>
+                      {deal.name}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{deal.type}</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant={deal.status === 'Amendments Required' ? 'destructive' : 'default'}>
+                      {deal.status}
+                    </Badge>
+                    <div className="text-xs text-muted-foreground flex items-center">
+                      <Clock className="h-3 w-3 mr-1" />
+                      <NoSSR fallback="...">
+                        {Math.floor((Date.now() - new Date(deal.updatedAt).getTime()) / (1000 * 60 * 60 * 24))}d
+                      </NoSSR>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No deals for review
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -159,22 +235,44 @@ export function Dashboard({ user, onViewDeal }: DashboardProps) {
       {/* New Leads */}
       <Card>
         <CardHeader>
-          <CardTitle>New Leads</CardTitle>
+          <CardTitle>Recent Deals</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {newLeads.map((lead) => (
-              <div key={lead.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium cursor-pointer hover:text-primary"
-                     onClick={() => onViewDeal(lead.id)}>
-                    {lead.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{lead.amount} • {lead.source}</p>
-                </div>
-                <div className="text-sm text-muted-foreground">{lead.date}</div>
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2].map((i) => (
+                  <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="space-y-1">
+                      <div className="h-4 bg-muted rounded w-32"></div>
+                      <div className="h-3 bg-muted rounded w-24"></div>
+                    </div>
+                    <div className="h-3 bg-muted rounded w-16"></div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : newLeads.length > 0 ? (
+              newLeads.map((deal) => (
+                <div key={deal.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <p className="font-medium cursor-pointer hover:text-primary"
+                       onClick={() => onViewDeal(deal.id)}>
+                      {deal.name}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{deal.amount} • {deal.type}</p>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <NoSSR fallback="...">
+                      {new Date(deal.createdAt).toLocaleDateString()}
+                    </NoSSR>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No recent deals
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
