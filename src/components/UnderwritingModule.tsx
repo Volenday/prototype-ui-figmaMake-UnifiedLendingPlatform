@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import { AlertTriangle, CheckCircle, Clock, FileText, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';

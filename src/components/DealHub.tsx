@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import { ArrowLeft, FileText, Users, Building, DollarSign, TrendingUp, MessageSquare, AlertTriangle } from 'lucide-react';
 import { Button } from './ui/button';

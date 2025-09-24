@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import { Plus, Search, Filter, FileText, TrendingUp } from 'lucide-react';
 import { Button } from './ui/button';
