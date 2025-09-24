@@ -7,6 +7,7 @@ import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Alert, AlertDescription } from './ui/alert';
 import { useDeals } from '@/hooks/useDeals';
+import { useDealsStore } from '@/stores/dealsStore';
 import { NoSSR } from './NoSSR';
 import { useEffect } from 'react';
 
@@ -20,6 +21,14 @@ interface DashboardProps {
 
 export function Dashboard({ user, onViewDeal }: DashboardProps) {
   const { deals, totalDeals, isLoading, error, refetch } = useDeals({ limit: 10 });
+  const { setSelectedDeal, selectDealById } = useDealsStore();
+
+  const handleDealClick = (dealId: string) => {
+    // Select the deal in the store
+    selectDealById(dealId);
+    // Navigate to deal view
+    onViewDeal(dealId);
+  };
 
   // Get pipeline deals (active deals)
   const pipelineDeals = deals.filter(deal => 
@@ -161,7 +170,7 @@ export function Dashboard({ user, onViewDeal }: DashboardProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium cursor-pointer hover:text-primary" 
-                         onClick={() => onViewDeal(deal.id)}>
+                         onClick={() => handleDealClick(deal.id)}>
                         {deal.name}
                       </p>
                       <p className="text-sm text-muted-foreground">{deal.amount} • {deal.stage}</p>
@@ -205,7 +214,7 @@ export function Dashboard({ user, onViewDeal }: DashboardProps) {
                 <div key={deal.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex-1">
                     <p className="font-medium cursor-pointer hover:text-primary"
-                       onClick={() => onViewDeal(deal.id)}>
+                       onClick={() => handleDealClick(deal.id)}>
                       {deal.name}
                     </p>
                     <p className="text-sm text-muted-foreground">{deal.type}</p>
@@ -256,7 +265,7 @@ export function Dashboard({ user, onViewDeal }: DashboardProps) {
                 <div key={deal.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <p className="font-medium cursor-pointer hover:text-primary"
-                       onClick={() => onViewDeal(deal.id)}>
+                       onClick={() => handleDealClick(deal.id)}>
                       {deal.name}
                     </p>
                     <p className="text-sm text-muted-foreground">{deal.amount} • {deal.type}</p>

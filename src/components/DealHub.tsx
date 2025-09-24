@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, FileText, Users, Building, DollarSign, TrendingUp, MessageSquare, AlertTriangle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Avatar, AvatarFallback } from './ui/avatar';
+import { useDealsStore } from '@/stores/dealsStore';
+import { NoSSR } from './NoSSR';
 
 interface DealHubProps {
   dealId: string | null;
@@ -16,8 +18,19 @@ interface DealHubProps {
 
 export function DealHub({ dealId, onBack }: DealHubProps) {
   const [activeTab, setActiveTab] = useState('summary');
+  const { selectedDeal, getDealById, selectDealById } = useDealsStore();
 
-  if (!dealId) {
+  // If we have a dealId but no selected deal, try to select it
+  useEffect(() => {
+    if (dealId && !selectedDeal) {
+      selectDealById(dealId);
+    }
+  }, [dealId, selectedDeal, selectDealById]);
+
+  // Get the deal to display (prioritize selectedDeal, fallback to getDealById)
+  const dealToDisplay = selectedDeal || (dealId ? getDealById(dealId) : null);
+
+  if (!dealToDisplay) {
     return (
       <div className="p-6">
         <div className="flex items-center space-x-4 mb-6">
@@ -35,14 +48,20 @@ export function DealHub({ dealId, onBack }: DealHubProps) {
     );
   }
 
-  // Mock deal data
+  // Use real deal data from store
   const deal = {
-    id: dealId,
-    name: 'Oakwood Commercial Center',
-    amount: '£2,500,000',
-    client: 'Meridian Properties Ltd',
-    stage: 'Underwriting',
-    progress: 65,
+    id: dealToDisplay.id,
+    name: dealToDisplay.name,
+    amount: dealToDisplay.amount,
+    client: dealToDisplay.name, // Using name as client for now
+    stage: dealToDisplay.stage,
+    progress: dealToDisplay.progress,
+    status: dealToDisplay.status,
+    type: dealToDisplay.type,
+    createdAt: dealToDisplay.createdAt,
+    updatedAt: dealToDisplay.updatedAt,
+    rawAmount: dealToDisplay.rawAmount,
+    // Mock data for fields not available from API yet
     ltv: '75%',
     ltc: '68%',
     dscr: '1.35',
@@ -53,18 +72,38 @@ export function DealHub({ dealId, onBack }: DealHubProps) {
       { name: 'Emma Davis', role: 'Legal Counsel', initials: 'ED' },
     ],
     riskFlags: [
-      { type: 'Market Risk', severity: 'Medium', description: 'Declining retail footfall in area' },
-      { type: 'Credit Risk', severity: 'Low', description: 'Strong borrower covenant package' },
+      { type: 'Market Risk', severity: 'Medium', description: 'Market conditions assessment' },
+      { type: 'Credit Risk', severity: dealToDisplay.status === 'Approved' ? 'Low' : 'Medium', description: `Deal status: ${dealToDisplay.status}` },
     ]
   };
 
-  const stages = [
-    { name: 'Initial Assessment', completed: true },
-    { name: 'Due Diligence', completed: true },
-    { name: 'Underwriting', completed: false, active: true },
-    { name: 'Committee Review', completed: false },
-    { name: 'Approved', completed: false },
-  ];
+  // Generate stages based on deal status
+  const getStagesFromStatus = (status: string, stage: string) => {
+    const allStages = [
+      { name: 'Initial Assessment', completed: false, active: false },
+      { name: 'Due Diligence', completed: false, active: false },
+      { name: 'Underwriting', completed: false, active: false },
+      { name: 'Committee Review', completed: false, active: false },
+      { name: 'Approved', completed: false, active: false },
+    ];
+
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return allStages.map((s, i) => ({ ...s, completed: i < 4, active: i === 4 }));
+      case 'pending':
+        if (stage.toLowerCase().includes('committee')) {
+          return allStages.map((s, i) => ({ ...s, completed: i < 3, active: i === 3 }));
+        } else {
+          return allStages.map((s, i) => ({ ...s, completed: i < 2, active: i === 2 }));
+        }
+      case 'amendments required':
+        return allStages.map((s, i) => ({ ...s, completed: i < 2, active: i === 2 }));
+      default:
+        return allStages.map((s, i) => ({ ...s, completed: i < 1, active: i === 1 }));
+    }
+  };
+
+  const stages = getStagesFromStatus(deal.status, deal.stage);
 
   return (
     <div className="p-6 space-y-6">

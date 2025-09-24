@@ -32,6 +32,7 @@ interface DealsState {
 	isLoading: boolean;
 	error: string | null;
 	lastFetched: number | null;
+	selectedDeal: Deal | null;
 	
 	// Filters
 	filters: {
@@ -52,6 +53,9 @@ interface DealsState {
 	clearDeals: () => void;
 	getDealById: (id: string) => Deal | undefined;
 	getFilteredDeals: () => Deal[];
+	setSelectedDeal: (deal: Deal | null) => void;
+	selectDealById: (id: string) => void;
+	clearSelectedDeal: () => void;
 }
 
 export const useDealsStore = create<DealsState>()(
@@ -65,6 +69,7 @@ export const useDealsStore = create<DealsState>()(
 			isLoading: false,
 			error: null,
 			lastFetched: null,
+			selectedDeal: null,
 			filters: {},
 
 			// Actions
@@ -130,6 +135,7 @@ export const useDealsStore = create<DealsState>()(
 					totalPages: 1,
 					error: null,
 					lastFetched: null,
+					selectedDeal: null,
 				});
 			},
 
@@ -162,6 +168,21 @@ export const useDealsStore = create<DealsState>()(
 
 				return filtered;
 			},
+
+			setSelectedDeal: (deal: Deal | null) => {
+				set({ selectedDeal: deal });
+			},
+
+			selectDealById: (id: string) => {
+				const deal = get().getDealById(id);
+				if (deal) {
+					set({ selectedDeal: deal });
+				}
+			},
+
+			clearSelectedDeal: () => {
+				set({ selectedDeal: null });
+			},
 		}),
 		{
 			name: 'deals-storage',
@@ -173,6 +194,7 @@ export const useDealsStore = create<DealsState>()(
 				currentPage: state.currentPage,
 				totalPages: state.totalPages,
 				lastFetched: state.lastFetched,
+				selectedDeal: state.selectedDeal,
 				filters: state.filters,
 			}),
 		}

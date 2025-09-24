@@ -139,3 +139,18 @@ export const useFilteredDeals = () => {
 		clearFilters,
 	};
 };
+
+// Hook for selected deal
+export const useSelectedDeal = () => {
+	const selectedDeal = useDealsStore((state) => state.selectedDeal);
+	const setSelectedDeal = useDealsStore((state) => state.setSelectedDeal);
+	const selectDealById = useDealsStore((state) => state.selectDealById);
+	const clearSelectedDeal = useDealsStore((state) => state.clearSelectedDeal);
+
+	return {
+		selectedDeal,
+		setSelectedDeal,
+		selectDealById,
+		clearSelectedDeal,
+	};
+};
